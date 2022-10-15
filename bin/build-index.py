@@ -108,26 +108,15 @@ def get_html_spec_metadata(folder_name, path):
     }
 
 
-def build_redirect(shortname, spec_folder):
-    """Builds redirects from the shortname to the current work for that spec.
-
-    Since Github Actions doesn't allow anything like mod_rewrite, we do this by
-    creating an empty index.html in the shortname folder that redirects to the
-    correct spec.
+def create_symlink(shortname, spec_folder):
+    """Writes a symlink from the shortname to the current work for that spec.
     """
-
-    template = jinja_env.get_template("redirect.html.j2")
-    contents = template.render(spec_folder=spec_folder)
 
     folder = os.path.join(".", shortname)
     try:
-        os.mkdir(folder)
-    except FileExistsError:
+        os.symlink(os.path.join(".", spec_folder), folder)
+    except OSError:
         pass
-
-    index = os.path.join(folder, "index.html")
-    with open(index, mode='w', encoding="UTF-8") as f:
-        f.write(contents)
 
 
 CURRENT_WORK_EXCEPTIONS = {
@@ -172,7 +161,7 @@ for entry in os.scandir("."):
 for shortname, specgroup in specgroups.items():
     if len(specgroup) == 1:
         if shortname != specgroup[0]["dir"]:
-            build_redirect(shortname, specgroup[0]["dir"])
+            create_symlink(shortname, specgroup[0]["dir"])
     else:
         specgroup.sort(key=lambda spec: spec["level"])
 
@@ -194,9 +183,9 @@ for shortname, specgroup in specgroups.items():
             currentWorkDir = specgroup[-1]["dir"]
 
         if shortname != currentWorkDir:
-            build_redirect(shortname, currentWorkDir)
+            create_symlink(shortname, currentWorkDir)
         if shortname == "css-snapshot":
-            build_redirect("css", currentWorkDir)
+            create_symlink("css", currentWorkDir)
 
 with open("./index.html", mode='w', encoding="UTF-8") as f:
     template = jinja_env.get_template("index.html.j2")
